@@ -1,0 +1,20 @@
+{
+    "name": "HushStudy",
+    "short_name": "HS",
+    "start_url": "/",
+    "display": "standalone",
+    "description": "AI app for finding study spaces",
+    "theme_color": "#90D5FF",
+    "icons": [
+        {
+            "src": "hushstudy-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "hushstudy-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
