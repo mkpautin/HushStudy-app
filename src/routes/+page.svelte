@@ -1,4 +1,6 @@
 <script>
+	import { form } from "$app/server";
+    import { PUBLIC_API_IP, PUBLIC_API_PORT } from '$env/static/public';
     let isRecording = $state(false);
     let mediaRecorder = null;
     let audioChunks = [];
@@ -7,17 +9,28 @@
     async function startRecording() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder = new MediaRecorder(stream, {
+                mimeType: "audio/webm"
+            });
             audioChunks = [];
 
             mediaRecorder.ondataavailable = (event) => {
                 audioChunks.push(event.data);
             };
-
-            mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(audioChunks, {type: 'audio/wav'});
+            
+            console.log(mediaRecorder.mimeType);
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunks, {type: mediaRecorder.mimeType});
                 audioUrl = URL.createObjectURL(audioBlob);
                 audioChunks = [];
+
+                const formData = new FormData();
+                formData.append("file", audioBlob, "recording.webm");
+
+                await fetch(`http://${PUBLIC_API_IP}:${PUBLIC_API_PORT}/upload-audio`, {
+                    method: "POST",
+                    body: formData
+                });
 
                 stream.getTracks().forEach(track => track.stop());
             }
