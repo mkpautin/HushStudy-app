@@ -54,6 +54,9 @@
     <audio controls src="{audioUrl}"></audio>
 </figure>
 <div id="buttons" class="flex justify-center gap-2">
-    <button class="rounded-md border border-gray-300 shadow-lg p-1 h-fit" onclick={startRecording} disabled={isRecording}>Start Recording</button>
-    <button class="rounded-md border border-gray-300 shadow-lg p-1 h-fit" onclick={stopRecording} disabled={!isRecording}>Stop Recording</button>
+    {#if !isRecording}
+        <button class="rounded-md border border-gray-300 shadow-lg p-1 h-fit" onclick={startRecording} >Start Recording</button>
+    {:else}
+        <button class="rounded-md border border-gray-300 shadow-lg p-1 h-fit" onclick={stopRecording} >Stop Recording</button>
+    {/if}
 </div>
