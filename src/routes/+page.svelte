@@ -1,7 +1,7 @@
 <script>
-	// import { form } from "$app/server";
-    // import { PUBLIC_API_IP, PUBLIC_API_PORT } from '$env/static/public';
-    import logo from "$lib/assets/logo.svg"
+	import { form } from "$app/server";
+    import { PUBLIC_API_IP, PUBLIC_API_PORT } from '$env/static/public';
+    import logo from "$lib/assets/logo.svg";
 	import { normalizeUrl } from "@sveltejs/kit";
 
     let timerStart;
@@ -11,14 +11,14 @@
     let audioChunks = [];
     let audioUrl = $state(null);
     let isChatter = $state(null);
-    let durationSecondsLeft = $state(null)
+    let durationSecondsLeft = $state(null);
     let bgColor = $derived.by(() => {
         if (isChatter === true) {
-            return "bg-red-700"
+            return "bg-red-700";
         } else if (isChatter === false) {
-            return "bg-green-500"
+            return "bg-green-500";
         } else {
-            return "bg-blue-400"
+            return "bg-blue-400";
         }
     })
     let { chatterMessage, chatterSubMessage} = $derived.by(() => {
@@ -26,28 +26,28 @@
             return {
                 chatterMessage: "Recording...",
                 chatterSubMessage: "Click the button to stop recording"
-            } 
+            };
         } else if (isChatter === false) {
             return {
                 chatterMessage: "Non-Chatter",
                 chatterSubMessage: "You could study here."
-            }
+            };
         } else if (isChatter === true && durationSecondsLeft) {
             return {
                 chatterMessage: "Chatter",
                 chatterSubMessage: `This may last for ${durationSecondsLeft} ${durationSecondsLeft <= 1 ? "min" : "mins"}.`
-            }
+            };
         } else {
             return {
                 chatterMessage: "Welcome",
                 chatterSubMessage: "Click the button to start recording."
-            }
+            };
         }
     })
     let errorMessage = $state("")
 
     async function startRecording() {
-        errorMessage = ""
+        errorMessage = "";
         try {
             const stream = await navigator.mediaDevices.getUserMedia({audio: true});
             mediaRecorder = new MediaRecorder(stream, {
@@ -69,38 +69,39 @@
                     const formData = new FormData();
                     formData.append("file", audioBlob, "recording.webm");
 
-                    // const response = await fetch(`http://${PUBLIC_API_IP}:${PUBLIC_API_PORT}/upload-audio`, {
-                    //     method: "POST",
-                    //     body: formData
-                    // });
-                    // const data = response.json()
-                    isChatter = Math.random() >= 0.5 // data.is_chatter
-                    durationSecondsLeft = Math.floor(Math.random() * 5) + 1 // data.duration_seconds_left
+                    const response = await fetch(`http://${PUBLIC_API_IP}:${PUBLIC_API_PORT}/upload-audio`, {
+                        method: "POST",
+                        body: formData
+                    });
+                    const data = await response.json();
+                    console.log(data);
+                    isChatter = data.is_chatter;
+                    durationSecondsLeft = data.duration_seconds_left;
                 } catch (e) {
-                    errorMessage = e.message
+                    errorMessage = e.message;
                 }
 
                 stream.getTracks().forEach(track => track.stop());
             }
-            audioUrl = null
-            isChatter = null
-            durationSecondsLeft = null
+            audioUrl = null;
+            isChatter = null;
+            durationSecondsLeft = null;
             timerStart = Date.now();
             mediaRecorder.start();
             isRecording = true;
         } catch (err) {
-            errorMessage = `Error recording: ${err.message}`
+            errorMessage = `Error recording: ${err.message}`;
         }
     }
 
     function stopRecording() {
-        errorMessage = ''
+        errorMessage = '';
         if (mediaRecorder && isRecording) {
             if ((Date.now()-timerStart)/1000 >= 5) {
                 mediaRecorder.stop();
                 isRecording = false;
             } else {
-                errorMessage = "Recording should be at least 5 seconds"
+                errorMessage = "Recording should be at least 5 seconds";
             }
         } 
     }
