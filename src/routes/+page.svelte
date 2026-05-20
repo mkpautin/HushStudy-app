@@ -70,6 +70,7 @@
                     formData.append("file", audioBlob, "recording.webm");
 
                     const response = await fetch(`http://${PUBLIC_API_IP}:${PUBLIC_API_PORT}/upload-audio`, {
+                        credentials: "include",
                         method: "POST",
                         body: formData
                     });
