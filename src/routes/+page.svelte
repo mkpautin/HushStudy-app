@@ -13,7 +13,7 @@
     let isChatter = $state(null);
     let durationSecondsLeft = $state(null);
     let durationMinsLeft = $derived(Math.ceil(durationSecondsLeft / 60))
-    let overThreshold = $state(false);
+    let underThreshold = $state(false);
     let { chatterMessage, chatterSubMessage, bgColor} = $derived.by(() => {
         if (isRecording) {
             return {
@@ -30,8 +30,8 @@
         } else if (isChatter === true && durationSecondsLeft) {
             return {
                 chatterMessage: "Chatter",
-                chatterSubMessage: `This may last for ${durationMinsLeft} ${durationMinsLeft <= 1 ? "min" : "mins"}. ${overThreshold ? "You may want to study somewhere else." : "You could study here."}`,
-                bgColor: overThreshold ? "bg-red-700" : "bg-orange-500"
+                chatterSubMessage: `This may last for ${durationMinsLeft} ${durationMinsLeft <= 1 ? "min" : "mins"}. ${underThreshold ? "You could study here." : "You may want to study somewhere else."}`,
+                bgColor: underThreshold ? "bg-orange-500" : "bg-red-700"
             };
         } else {
             return {
@@ -41,10 +41,12 @@
             };
         }
     })
-    let errorMessage = $state("")
+    let recordErrorMessage = $state("")
+    let adjustMessage = $state("")
 
     async function startRecording() {
-        errorMessage = "";
+        recordErrorMessage = "";
+        adjustMessage = "";
         try {
             const stream = await navigator.mediaDevices.getUserMedia({audio: true});
             mediaRecorder = new MediaRecorder(stream, {
@@ -74,11 +76,11 @@
                     const data = await response.json();
                     console.log(data);
                     isChatter = data.is_chatter;
-                    durationSecondsLeft = data.duration_left_seconds;
-                    overThreshold = data.over_threshold;
+                    durationSecondsLeft = data.duration_seconds_left;
+                    underThreshold = data.studyable;
 
                 } catch (e) {
-                    errorMessage = e.message;
+                    recordErrorMessage = e.message;
                 }
 
                 stream.getTracks().forEach(track => track.stop());
@@ -90,20 +92,34 @@
             mediaRecorder.start();
             isRecording = true;
         } catch (err) {
-            errorMessage = `Error recording: ${err.message}`;
+            recordErrorMessage = `Error recording: ${err.message}`;
         }
     }
 
     async function stopRecording() {
-        errorMessage = '';
+        recordErrorMessage = '';
         if (mediaRecorder && isRecording) {
             if ((Date.now()-timerStart)/1000 >= 5) {
                 await mediaRecorder.stop();
                 isRecording = false;
             } else {
-                errorMessage = "Recording should be at least 5 seconds";
+                recordErrorMessage = "Recording should be at least 5 seconds";
             }
         } 
+    }
+
+    async function adjustThreshold() {
+        try {
+            adjustMessage = ""
+            const response = await fetch(`http://${PUBLIC_API_IP}:${PUBLIC_API_PORT}/adjust-threshold?duration_prediction=${durationSecondsLeft}`, {
+                credentials: "include",
+                method: "POST"
+            })
+            const data = await response.json()
+            adjustMessage = `${data.message}. New threshold: ${data.new_threshold}`
+        } catch (err) {
+            adjustMessage = `Error adjusting threshold: ${err.message}`
+        }
     }
 </script>
 
@@ -112,16 +128,20 @@
         <img src={logo} alt="HushStudy Logo" class="h-3/4">
         <h1 class="flex-1 text-left text-5xl text-blue-400">HushStudy</h1>
     </header>
-    <div class="text-white mt-10">
+    <div class="text-white mt-10 pl-10 pr-10 h-46">
         <h2 class="text-5xl text-center">{chatterMessage}</h2>
         <h3 class="mt-20 text-xl text-center">{chatterSubMessage}</h3>
     </div>
-    <div class="flex-1 flex flex-col items-center mt-30 text-white">
+    <div class="flex-1 flex flex-col items-center mt-25 text-white">
         <button class="rounded-2xl outline-2 outline-offset-1 outline-white border-2 bg-white active:scale-95 shadow-2xl pr-4 pl-4 p-2 text-blue-400 h-fit w-fit" onclick={isRecording? stopRecording : startRecording} >{ isRecording ? "Stop" : "Start" } Recording</button>
-        {#if errorMessage}
-            <h5 class="m-3 pl-2 pr-2 rounded-lg text-sm font-sans shadow-md bg-red-500">{errorMessage}</h5>
+        {#if recordErrorMessage}
+            <h5 class="m-3 pl-2 pr-2 rounded-lg text-sm font-sans shadow-md bg-red-500">{recordErrorMessage}</h5>
         {/if}
-        {#if audioUrl}            
+        {#if audioUrl}     
+            <button class="mt-3 rounded-2xl outline-2 outline-offset-1 outline-white border-2 bg-white active:scale-95 shadow-2xl pr-4 pl-4 p-2 text-blue-400 h-fit w-fit" onclick={adjustThreshold}>Adjust Threshold</button>
+            {#if adjustMessage}
+                <h5 class="m-3 pl-2 pr-2 rounded-lg text-white text-sm font-sans shadow-md bg-blue-400">{adjustMessage}</h5>
+            {/if}
             <figure class="flex flex-col items-center gap-4 mt-8">
                 <figcaption>Recorded Audio:</figcaption>
                 <audio controls src="{audioUrl}"></audio>
