@@ -12,35 +12,32 @@
     let audioUrl = $state(null);
     let isChatter = $state(null);
     let durationSecondsLeft = $state(null);
-    let bgColor = $derived.by(() => {
-        if (isChatter === true) {
-            return "bg-red-700";
-        } else if (isChatter === false) {
-            return "bg-green-500";
-        } else {
-            return "bg-blue-400";
-        }
-    })
-    let { chatterMessage, chatterSubMessage} = $derived.by(() => {
+    let durationMinsLeft = $derived(Math.ceil(durationSecondsLeft / 60))
+    let overThreshold = $state(false);
+    let { chatterMessage, chatterSubMessage, bgColor} = $derived.by(() => {
         if (isRecording) {
             return {
                 chatterMessage: "Recording...",
-                chatterSubMessage: "Click the button to stop recording"
+                chatterSubMessage: "Click the button to stop recording",
+                bgColor: "bg-blue-400"
             };
         } else if (isChatter === false) {
             return {
                 chatterMessage: "Non-Chatter",
-                chatterSubMessage: "You could study here."
+                chatterSubMessage: "You could study here.",
+                bgColor: "bg-green-500"
             };
         } else if (isChatter === true && durationSecondsLeft) {
             return {
                 chatterMessage: "Chatter",
-                chatterSubMessage: `This may last for ${durationSecondsLeft} ${durationSecondsLeft <= 1 ? "min" : "mins"}.`
+                chatterSubMessage: `This may last for ${durationMinsLeft} ${durationMinsLeft <= 1 ? "min" : "mins"}. ${overThreshold ? "You may want to study somewhere else." : "You could study here."}`,
+                bgColor: overThreshold ? "bg-red-700" : "bg-orange-500"
             };
         } else {
             return {
                 chatterMessage: "Welcome",
-                chatterSubMessage: "Click the button to start recording."
+                chatterSubMessage: "Click the button to start recording.",
+                bgColor: "bg-blue-400"
             };
         }
     })
@@ -76,7 +73,9 @@
                     const data = await response.json();
                     console.log(data);
                     isChatter = data.is_chatter;
-                    durationSecondsLeft = data.duration_seconds_left;
+                    durationSecondsLeft = data.duration_left_seconds;
+                    overThreshold = data.over_threshold;
+
                 } catch (e) {
                     errorMessage = e.message;
                 }
@@ -94,11 +93,11 @@
         }
     }
 
-    function stopRecording() {
+    async function stopRecording() {
         errorMessage = '';
         if (mediaRecorder && isRecording) {
             if ((Date.now()-timerStart)/1000 >= 5) {
-                mediaRecorder.stop();
+                await mediaRecorder.stop();
                 isRecording = false;
             } else {
                 errorMessage = "Recording should be at least 5 seconds";
