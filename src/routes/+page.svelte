@@ -14,11 +14,18 @@
     let durationSecondsLeft = $state(null);
     let durationMinsLeft = $derived(Math.ceil(durationSecondsLeft / 60))
     let underThreshold = $state(false);
+    let isAnalyzing = $state(false);
     let { chatterMessage, chatterSubMessage, bgColor} = $derived.by(() => {
         if (isRecording) {
             return {
                 chatterMessage: "Recording...",
                 chatterSubMessage: "Click the button to stop recording",
+                bgColor: "bg-blue-400"
+            };
+        } else if (isAnalyzing) {
+            return {
+                chatterMessage: "Analyzing...",
+                chatterSubMessage: "Processing your recording",
                 bgColor: "bg-blue-400"
             };
         } else if (isChatter === false) {
@@ -81,6 +88,8 @@
 
                 } catch (e) {
                     recordErrorMessage = e.message;
+                } finally {
+                    isAnalyzing = false;
                 }
 
                 stream.getTracks().forEach(track => track.stop());
@@ -88,6 +97,7 @@
             audioUrl = null;
             isChatter = null;
             durationSecondsLeft = null;
+            isAnalyzing = false;
             timerStart = Date.now();
             mediaRecorder.start();
             isRecording = true;
@@ -100,8 +110,9 @@
         recordErrorMessage = '';
         if (mediaRecorder && isRecording) {
             if ((Date.now()-timerStart)/1000 >= 5) {
-                await mediaRecorder.stop();
                 isRecording = false;
+                isAnalyzing = true;
+                mediaRecorder.stop();
             } else {
                 recordErrorMessage = "Recording should be at least 5 seconds";
             }
@@ -137,11 +148,13 @@
         {#if recordErrorMessage}
             <h5 class="m-3 pl-2 pr-2 rounded-lg text-sm font-sans shadow-md bg-red-500">{recordErrorMessage}</h5>
         {/if}
-        {#if audioUrl}     
-            <button class="mt-3 rounded-2xl outline-2 outline-offset-1 outline-white border-2 bg-white active:scale-95 shadow-2xl pr-4 pl-4 p-2 text-blue-400 h-fit w-fit" onclick={adjustThreshold}>Adjust Threshold</button>
+        {#if isChatter}
+        <button class="mt-3 rounded-2xl outline-2 outline-offset-1 outline-white border-2 bg-white active:scale-95 shadow-2xl pr-4 pl-4 p-2 text-blue-400 h-fit w-fit" onclick={adjustThreshold}>Adjust Threshold</button>
             {#if adjustMessage}
                 <h5 class="m-3 pl-2 pr-2 rounded-lg text-white text-sm font-sans shadow-md bg-blue-400">{adjustMessage}</h5>
             {/if}
+        {/if}
+        {#if audioUrl}     
             <figure class="flex flex-col items-center gap-4 mt-8">
                 <figcaption>Recorded Audio:</figcaption>
                 <audio controls src="{audioUrl}"></audio>
